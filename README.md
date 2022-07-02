@@ -28,6 +28,7 @@ chmod +x ./scripts/install.sh
 ./scripts/dependencies.sh
 ./scripts/install.sh
 echo 'export TURTLEBOT3_MODEL=burger' >> ~/.bashrc
+source ~/.bashrc
 ```
 
 3. Building and launching
