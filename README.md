@@ -34,7 +34,8 @@ source ~/.bashrc
 3. Building and launching
 
 ```sh
-catkin build -j4
-source ../devel/setup.bash
+cd ..
+catkin_make
+source ./devel/setup.bash
 roslaunch turtlebot3_gazebo turtlebot3_world.launch
 ```
