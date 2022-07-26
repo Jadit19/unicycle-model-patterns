@@ -1,15 +1,13 @@
 <launch>
     <arg name="model" default="burger"/>
-    <arg name="x_pos" default="10.0"/>
+    <arg name="x_pos" default="0.0"/>
     <arg name="y_pos" default="0.0"/>
-    <arg name="z_pos" default="0.0"/>
 
     <include file="$(find turtlebot3_gazebo)/launch/turtlebot3_empty_world.launch">
         <arg name="model" default="$(arg model)"/>
         <arg name="x_pos" default="$(arg x_pos)"/>
         <arg name="y_pos" default="$(arg y_pos)"/>
-        <arg name="z_pos" default="$(arg z_pos)"/>
     </include>
 
-    <node pkg="turtlebot3_control" name="forward" type="forward.py" output="screen" />
+    <node pkg="turtlebot3_control" name="forward" type="forward" output="screen"/>
 </launch>

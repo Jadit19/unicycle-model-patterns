@@ -8,7 +8,7 @@ project(turtlebot3_control)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  rospy
+  roscpp
   geometry_msgs
   nav_msgs
 )
@@ -105,7 +105,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES turtlebot3_control
-#  CATKIN_DEPENDS rospy
+#  CATKIN_DEPENDS roscpp
 #  DEPENDS system_lib
 )
 
@@ -159,10 +159,10 @@ include_directories(
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-catkin_install_python(PROGRAMS
-  scripts/forward.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-)
+# catkin_install_python(PROGRAMS
+#   scripts/my_python_script
+#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
@@ -204,3 +204,7 @@ catkin_install_python(PROGRAMS
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+add_executable(forward src/forward.cpp)
+target_link_libraries(forward ${catkin_LIBRARIES})
+add_dependencies(forward ${catkin_EXPORTED_TARGETS})
