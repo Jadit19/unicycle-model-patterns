@@ -7,10 +7,11 @@
 #include <nav_msgs/Odometry.h>
 
 //! Changeable parameters
-int rate = 30;
-double vel = 10;
+double vel = 1;
 double r_min = 2;
 double r_max = 4;
+int rate = 30;
+double movtTime = 0.5;
 
 //! Enumerating the movement of the bot into 2 ccategories ->
 //! 1. Moving forward
@@ -22,6 +23,7 @@ enum FSM {
 };
 
 //! Global variables
+int movtTimer = rate * movtTime;
 double m = (r_max+r_min) * vel / (r_max-r_min);
 double c = -2 * vel * (r_max*r_min) / (r_max-r_min);
 FSM state = FSM::ALIGN;
@@ -82,8 +84,6 @@ void odomCallback(const nav_msgs::OdometryConstPtr& msg){
     updateRPY(msg->pose.pose.orientation);
 
     if (state == FSM::ALIGN){
-        // std::cout << "ALPHA: " << alpha << std::endl;
-        // std::cout << "YAW  : " << yaw << std::endl;
         if (abs(alpha-yaw) > 0.01){
             angleDiff = abs(alpha-yaw);
             if (angleDiff > M_PI){
@@ -102,9 +102,13 @@ void odomCallback(const nav_msgs::OdometryConstPtr& msg){
             state = FSM::MOVE;
         }
     } else if (state == FSM::MOVE){
-        cmd_vel.linear.x = vel / rate;
-        std::cout << "DONE: Moving" << std::endl;
-        state = FSM::UPDATE;
+        if (movtTimer--)
+            cmd_vel.linear.x = vel / rate;
+        else {
+            movtTimer = rate * movtTime;
+            std::cout << "DONE: Moving" << std::endl;
+            state = FSM::UPDATE;
+        }
     } else if (state == FSM::UPDATE){
         updateAlpha(msg->pose.pose.position);
         std::cout << "DONE: Updating, Alpha: " << alpha << std::endl << std::endl;
