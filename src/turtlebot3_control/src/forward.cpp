@@ -26,7 +26,7 @@ enum FSM {
 int movtTimer = rate * movtTime;
 double m = (r_max+r_min) * vel / (r_max-r_min);
 double c = -2 * vel * (r_max*r_min) / (r_max-r_min);
-FSM state = FSM::ALIGN;
+FSM state = FSM::UPDATE;
 
 //! Generating function, g(r)
 double g(double r){
@@ -42,6 +42,7 @@ void stopMoving(){
     cmd_vel.linear.x = 0;
     cmd_vel.linear.y = 0;
     cmd_vel.linear.z = 0;
+    return;
 }
 
 //! Calculating the roll, pitch and yaw of the bot
@@ -56,6 +57,7 @@ void updateRPY(const geometry_msgs::Quaternion& orientation){
     q.setZ(orientation.z);
     tf::Matrix3x3 m(q);
     m.getRPY(roll, pitch, yaw);
+    return;
 }
 
 //! Updating alpha, i.e. the direction the bot should be facing
@@ -74,31 +76,45 @@ void updateAlpha(const geometry_msgs::Point& position){
     slope = g(r) / r;
     phi = asin(-slope/vel);
     alpha = -phi + theta;
+    if (alpha < -M_PI){
+        while (alpha < -M_PI)
+            alpha += M_PI;
+    } else if (alpha > M_PI){
+        while (alpha > M_PI)
+            alpha -= M_PI;
+    }
+    return;
 }
 
 //! Callback to the 'odom' topic
 //! Also, the controller for the movement of the bot
-double angleDiff = M_PI_2;
+double angleDiff = 0;
+double K = 0.1;
+double Kp = 0.05;
+double Ki = 0;
+double Kd = 0;
 void odomCallback(const nav_msgs::OdometryConstPtr& msg){
     stopMoving();
     updateRPY(msg->pose.pose.orientation);
 
-    if (state == FSM::ALIGN){
-        if (abs(alpha-yaw) > 0.01){
+    if (state == FSM::UPDATE){
+        updateAlpha(msg->pose.pose.position);
+        state = FSM::ALIGN;
+    } else if (state == FSM::ALIGN){
+        if (abs(alpha-yaw) > 0.003){
             angleDiff = abs(alpha-yaw);
             if (angleDiff > M_PI){
                 if (alpha > yaw)
-                    cmd_vel.angular.z = -0.1 - angleDiff*0.05;
+                    cmd_vel.angular.z = -K - angleDiff*Kp;
                 else
-                    cmd_vel.angular.z = 0.1 + angleDiff*0.05;
+                    cmd_vel.angular.z = K + angleDiff*Kp;
             } else {
                 if (alpha > yaw)
-                    cmd_vel.angular.z = 0.1 + angleDiff*0.05;
+                    cmd_vel.angular.z = K + angleDiff*Kp;
                 else
-                    cmd_vel.angular.z = -0.1 - angleDiff*0.05;
+                    cmd_vel.angular.z = -K - angleDiff*Kp;
             }
         } else {
-            std::cout << "DONE: Alignment" << std::endl;
             state = FSM::MOVE;
         }
     } else if (state == FSM::MOVE){
@@ -106,14 +122,10 @@ void odomCallback(const nav_msgs::OdometryConstPtr& msg){
             cmd_vel.linear.x = vel / rate;
         else {
             movtTimer = rate * movtTime;
-            std::cout << "DONE: Moving" << std::endl;
             state = FSM::UPDATE;
         }
-    } else if (state == FSM::UPDATE){
-        updateAlpha(msg->pose.pose.position);
-        std::cout << "DONE: Updating, Alpha: " << alpha << std::endl << std::endl;
-        state = FSM::ALIGN;
     }
+    return;
 }
 
 int main(int argc, char** argv){
