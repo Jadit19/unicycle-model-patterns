@@ -11,5 +11,6 @@
 
     <rosparam file="$(find turtlebot3_control)/config/params.yaml" />
 
-    <node pkg="turtlebot3_control" name="annular" type="annular" output="screen"/>
+    <!-- <node pkg="turtlebot3_control" name="annular" type="annular" output="screen"/> -->
+    <node pkg="turtlebot3_control" name="switching" type="switching" output="screen"/>
 </launch>
