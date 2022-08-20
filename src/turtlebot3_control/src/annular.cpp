@@ -5,14 +5,15 @@
 #include <geometry_msgs/Twist.h>
 
 //! -------- CHANGEABLE PARAMETERS --------
-const double V = 0.1;     // Velocity of the bot
-const double R_MIN = 2; // Minimum radius of the annular region
-const double R_MAX = 4; // Maximum radius of the annular region
-const int RATE = 30;    // Rate at which the state of the bot will be updated
+double V;               // Velocity of the bot
+double R_MIN;           // Minimum radius of the annular region
+double R_MAX;           // Maximum radius of the annular region
+double INITIAL_ANGLE;   // Initial angle of the bot w.r.t. X-Axis
+int RATE;               // Rate at which the state of the bot will be updated
 
 //! -------- DERIVED PARAMETERS --------
-const double M = (R_MAX+R_MIN)*V/(R_MAX-R_MIN);     // Slope of the linear generating function
-const double C = -2*V*(R_MAX*R_MIN)/(R_MAX-R_MIN);  // y-intercept of the linear generatung function
+double M;               // Slope of the linear generating function
+double C;               // y-intercept of the linear generatung function
 
 //! -------- FINITE STATE MACHINE --------
 enum FSM {              // Finite state machine declaration as enumeration
@@ -28,6 +29,13 @@ double pitch;               // Pitch angle of the bot
 double yaw;                 // Yaw angle of the bot
 double angleDiff = 0;       // Angular difference for initial alignment
 FSM state = FSM::ALIGN;     // State the bot currently is in
+
+// Setting the derived parameters
+void setDerivedParameters(){
+    M = (R_MAX+R_MIN)*V/(R_MAX-R_MIN);
+    C = -2*V*(R_MAX*R_MIN)/(R_MAX-R_MIN);
+    INITIAL_ANGLE *= M_PI / 180;
+}
 
 // Linear generating function, g(r) = mr + c
 // => Control function f(r) = m/r
@@ -70,13 +78,16 @@ void odometryCallback(const nav_msgs::OdometryConstPtr& msg){
 
     if (state == FSM::ALIGN){
         updateRPY(msg->pose.pose.orientation);
-        angleDiff = abs(- M_PI_2 - yaw);
+        angleDiff = abs(INITIAL_ANGLE - yaw);
         if (angleDiff > 0.003){
-            cmd_vel.angular.z = -0.1;
+            if (INITIAL_ANGLE > yaw)
+                cmd_vel.angular.z = 0.1 + 0.04*angleDiff;
+            else
+                cmd_vel.angular.z = -0.1 - 0.04*angleDiff;
         } else {
             state = FSM::MOVE;
-            std::cout << "Alignment Done!" << std::endl;
-            std::cout << "Moving now.." << std::endl;
+            std::cout << std::endl << "Alignment Done!" << std::endl;
+            std::cout << "Moving now.." << std::endl << std::endl;
         }
     } else if (state == FSM::MOVE){
         cmd_vel.linear.x = V;
@@ -89,6 +100,13 @@ void odometryCallback(const nav_msgs::OdometryConstPtr& msg){
 int main(int argc, char** argv){
     ros::init(argc, argv, "annular");
     ros::NodeHandle nh;
+
+    if (!nh.getParam("velocity", V) || !nh.getParam("minimum_radius", R_MIN) || !nh.getParam("maximum_radius", R_MAX) || !nh.getParam("refresh_rate", RATE) || !nh.getParam("initial_angle", INITIAL_ANGLE)){
+        ROS_ERROR("\nCan't load params..");
+        ROS_ERROR("Exiting now\n");
+        return EXIT_FAILURE;
+    }
+    setDerivedParameters();
 
     ros::Publisher pub_cmd_vel_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", RATE);
     ros::Subscriber sub_odom_ = nh.subscribe<nav_msgs::Odometry>("odom", RATE, odometryCallback);
