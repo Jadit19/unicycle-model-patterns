@@ -9,5 +9,5 @@
         <arg name="y_pos" default="$(arg y_pos)"/>
     </include>
 
-    <node pkg="turtlebot3_control" name="forward" type="forward" output="screen"/>
+    <node pkg="turtlebot3_control" name="annular" type="annular" output="screen"/>
 </launch>
