@@ -1,0 +1,5 @@
+velocity: 0.3
+minimum_radius: 2
+maximum_radius: 4
+refresh_rate: 30
+initial_angle: -90
