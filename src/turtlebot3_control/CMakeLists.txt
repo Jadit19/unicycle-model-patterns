@@ -205,9 +205,19 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
+
 # add_executable(annular src/annular.cpp)
 # target_link_libraries(annular ${catkin_LIBRARIES})
 # add_dependencies(annular ${catkin_EXPORTED_TARGETS})
 add_executable(quadratic src/quadratic.cpp)
 target_link_libraries(quadratic ${catkin_LIBRARIES})
 add_dependencies(quadratic ${catkin_EXPORTED_TARGETS})
+
+add_executable(annular src/annular.cpp)
+target_link_libraries(annular ${catkin_LIBRARIES})
+add_dependencies(annular ${catkin_EXPORTED_TARGETS})
+
+add_executable(switching src/switching.cpp)
+target_link_libraries(switching ${catkin_LIBRARIES})
+add_dependencies(switching ${catkin_EXPORTED_TARGETS})
+
