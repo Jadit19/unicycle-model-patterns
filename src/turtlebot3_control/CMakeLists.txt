@@ -213,6 +213,10 @@ add_executable(quadratic src/quadratic.cpp)
 target_link_libraries(quadratic ${catkin_LIBRARIES})
 add_dependencies(quadratic ${catkin_EXPORTED_TARGETS})
 
+add_executable(cubic src/cubic.cpp)
+target_link_libraries(cubic ${catkin_LIBRARIES})
+add_dependencies(cubic ${catkin_EXPORTED_TARGETS})
+
 add_executable(annular src/annular.cpp)
 target_link_libraries(annular ${catkin_LIBRARIES})
 add_dependencies(annular ${catkin_EXPORTED_TARGETS})
