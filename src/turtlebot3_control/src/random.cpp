@@ -48,8 +48,7 @@ void setDerivedParameters(){
     rPrev = R_MIN;
 
     //! -------- SETTING g1(r) --------
-    // double n = rand()/RAND_MAX;
-    double n = 0.3;
+    double n = rand()/RAND_MAX;
     if (n < 0.1){
         A1 = 0;
         B1 = 0;
@@ -61,7 +60,7 @@ void setDerivedParameters(){
             r1 = rand()/RAND_MAX * R_MIN;
         } else {
             double r1_min = ((R_MIN + R_MAX)*(R_MAX + R_MIN))/4*R_MIN;
-            r1 = (rand()/RAND_MAX + 1) * R_MAX;
+            r1 = (rand()/RAND_MAX + 1) * r1_min;
         }
         double a = V * (R_MAX+R_MIN) / ((R_MAX-R_MIN) * ((R_MAX+R_MIN)/2 - r1));
         double b = V*R_MAX + a*r1*R_MAX - a*R_MAX*R_MAX/2;
@@ -128,10 +127,10 @@ void setDerivedParameters(){
         }
         double a = V * ( R_MAX+R_MIN ) / ((R_MAX - R_MIN) * (( R_MAX*R_MAX + R_MIN*R_MIN + R_MAX*R_MIN )/3 + r1*r2 - (r1 + r2)*( R_MAX + R_MIN )/2 ));
         double b = V*R_MAX - (a/3)*(R_MAX*R_MAX*R_MAX) + (a*(r1+r2)/2)*(R_MAX*R_MAX) - a*r1*r2*R_MAX;
-        A2 = a/3;
-        B2 = -a * (r1+r2) / 2;
-        C2 = a*r1*r2;
-        D2 = b;
+        A2 = -a/3;
+        B2 = +a * (r1+r2) / 2;
+        C2 = -a*r1*r2;
+        D2 = -b;
     }
 
     ROS_WARN("\ng(r) = %fr^3 + %fr^2 + %fr + %f\n", A1, B1, C1, D1);
