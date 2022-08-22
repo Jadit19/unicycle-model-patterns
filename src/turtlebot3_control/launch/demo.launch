@@ -16,12 +16,14 @@
     <!-- <node pkg="turtlebot3_control" name="quadratic" type="quadratic" output="screen"/> -->
 
     <!-- node tag for generating cubic function -->
-    <node pkg="turtlebot3_control" name="cubic" type="cubic" output="screen"/>
+    <!-- <node pkg="turtlebot3_control" name="cubic" type="cubic" output="screen"/> -->
 
     <!-- node tag for switching -->
     <!-- <node pkg="turtlebot3_control" name="switching" type="switching" output="screen"/> -->
 
     <!-- loading params -->
     <rosparam file="$(find turtlebot3_control)/config/params.yaml" />
+
+    <node pkg="turtlebot3_control" name="random" type="random" output="screen"/>
 
 </launch>

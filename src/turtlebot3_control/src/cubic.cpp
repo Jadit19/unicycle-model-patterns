@@ -42,7 +42,7 @@ void setDerivedParameters(double n){
         r1 = ( rand() / RAND_MAX + 1)*r_min;
         r2 = ( rand() / RAND_MAX + 2)*r_min;
     }
-    a = V * ( R_MAX+R_MIN ) / ((R_MAX - R_MIN) * (( R_MAX*R_MAX + R_MIN*R_MIN + R_MAX*r_min )/3 + r1*r2 - (r1 + r2)*( R_MAX + R_MIN )/2 ));
+    a = V * ( R_MAX+R_MIN ) / ((R_MAX - R_MIN) * (( R_MAX*R_MAX + R_MIN*R_MIN + R_MAX*R_MIN )/3 + r1*r2 - (r1 + r2)*( R_MAX + R_MIN )/2 ));
     b = V*R_MAX - (a/3)*(R_MAX*R_MAX*R_MAX) + (a*(r1+r2)/2)*(R_MAX*R_MAX) - a*r1*r2*R_MAX;
 
     std::cout << "--------- Displaying Parameters --------" << std::endl;
