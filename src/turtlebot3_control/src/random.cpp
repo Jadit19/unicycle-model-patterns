@@ -95,8 +95,8 @@ void setDerivedParameters(){
     if (n < 0.1){
         A2 = 0;
         B2 = 0;
-        C2 = (R_MAX+R_MIN)*V/(R_MAX-R_MIN);
-        D2 = (V-C2) * R_MAX;
+        C2 = -(R_MAX+R_MIN)*V/(R_MAX-R_MIN);
+        D2 = -(V-C2) * R_MAX;
     } else if (n < 0.4){
         double r1;
         if (n < 0.25){
@@ -108,9 +108,9 @@ void setDerivedParameters(){
         double a = V * (R_MAX+R_MIN) / ((R_MAX-R_MIN) * ((R_MAX+R_MIN)/2 - r1));
         double b = V*R_MAX + a*r1*R_MAX - a*R_MAX*R_MAX/2;
         A2 = 0;
-        B2 = a/2;
-        C2 = -a*r1;
-        D2 = b;
+        B2 = -a/2;
+        C2 = a*r1;
+        D2 = -b;
     } else {
         double r1, r2;
         if (n < 0.6){
@@ -128,7 +128,7 @@ void setDerivedParameters(){
         double a = V * ( R_MAX+R_MIN ) / ((R_MAX - R_MIN) * (( R_MAX*R_MAX + R_MIN*R_MIN + R_MAX*R_MIN )/3 + r1*r2 - (r1 + r2)*( R_MAX + R_MIN )/2 ));
         double b = V*R_MAX - (a/3)*(R_MAX*R_MAX*R_MAX) + (a*(r1+r2)/2)*(R_MAX*R_MAX) - a*r1*r2*R_MAX;
         A2 = -a/3;
-        B2 = +a * (r1+r2) / 2;
+        B2 = a * (r1+r2) / 2;
         C2 = -a*r1*r2;
         D2 = -b;
     }
