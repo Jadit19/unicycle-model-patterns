@@ -11,6 +11,7 @@ double R_MIN;           // Minimum radius of the annular region
 double R_MAX;           // Maximum radius of the annular region
 double INITIAL_ANGLE;   // Initial angle of the bot w.r.t. X-Axis
 int RATE;               // Rate at which the state of the bot will be updated
+double tolerance;       // error for binary search
 
 //! -------- DERIVED PARAMETERS --------
 double A1, B1, C1, D1;      // Coefficients of the generating function, g1(r)
@@ -34,6 +35,13 @@ double rPrev;               // Previous value of r
 double rSwitching;          // Switching radius
 FSM state = FSM::ALIGN;     // State the bot currently is in
 
+double g1(double r){
+    return A1*r*r*r + B1*r*r + C1*r + D1;
+}
+double g2(double r){
+    return A2*r*r*r + B2*r*r + C2*r + D2;
+}
+
 double f1(double r){
     return (3*A1*r + 2*B1 + C1/r);
 }
@@ -48,12 +56,13 @@ void setDerivedParameters(){
     rPrev = R_MIN;
 
     //! -------- SETTING g1(r) --------
-    double n = rand()/RAND_MAX;
+    double n = (double)rand()/(double)RAND_MAX;
     if (n < 0.1){
         A1 = 0;
         B1 = 0;
         C1 = (R_MAX+R_MIN)*V/(R_MAX-R_MIN);
         D1 = (V-C1) * R_MAX;
+        std::cout << "LINEAR" << std::endl;
     } else if (n < 0.4){
         double r1;
         if (n < 0.25){
@@ -68,6 +77,7 @@ void setDerivedParameters(){
         B1 = a/2;
         C1 = -a*r1;
         D1 = b;
+        std::cout << "QUADRATIC" << std::endl;
     } else {
         double r1, r2;
         if (n < 0.6){
@@ -88,15 +98,19 @@ void setDerivedParameters(){
         B1 = -a * (r1+r2) / 2;
         C1 = a*r1*r2;
         D1 = b;
+        std::cout << "CUBIC" << std::endl;
     }
 
+    ROS_WARN("\ng(r) = %fr^3 + %fr^2 + %fr + %f\n", A1, B1, C1, D1);
+
     //! -------- SETTING g2(r) --------
-    n = rand()/RAND_MAX;
+    n = (double)rand()/(double)RAND_MAX;
     if (n < 0.1){
         A2 = 0;
         B2 = 0;
         C2 = -(R_MAX+R_MIN)*V/(R_MAX-R_MIN);
-        D2 = -(V-C2) * R_MAX;
+        D2 = -(V+C2) * R_MAX;
+        std::cout << "LINEAR" << std::endl;
     } else if (n < 0.4){
         double r1;
         if (n < 0.25){
@@ -111,6 +125,7 @@ void setDerivedParameters(){
         B2 = -a/2;
         C2 = a*r1;
         D2 = -b;
+        std::cout << "QUADRATIC" << std::endl;
     } else {
         double r1, r2;
         if (n < 0.6){
@@ -131,9 +146,29 @@ void setDerivedParameters(){
         B2 = a * (r1+r2) / 2;
         C2 = -a*r1*r2;
         D2 = -b;
+        std::cout << "CUBIC" << std::endl;
     }
 
-    ROS_WARN("\ng(r) = %fr^3 + %fr^2 + %fr + %f\n", A1, B1, C1, D1);
+    ROS_WARN("\ng(r) = %fr^3 + %fr^2 + %fr + %f\n", A2, B2, C2, D2);
+
+    //? -------------- implementing BINARY SEARCH ------------------
+    
+    double low = R_MIN;
+    double high = R_MAX;
+    double mid = (low + high)/2;
+    double error;
+
+    while(abs(high - low) >= tolerance){
+        mid = (low + high)/2;
+        error = g1(mid) - g2(mid);
+        if(error > 0){
+            high = mid;
+        }else {
+            low = mid;
+        }
+    }
+    std::cout << "The switching Radius is: " << mid << std::endl;
+    rSwitching = mid;
 }
 
 // Stop the movement of the bot
@@ -179,13 +214,14 @@ void odometryCallback(const nav_msgs::OdometryConstPtr& msg){
         double y = msg->pose.pose.position.y;
         double r = sqrt(x*x + y*y);
         cmd_vel.linear.x = V;
-        // if ((r-rSwitching)*(rPrev-rSwitching) <= 0){
-        //     std::cout << "Switching now" << std::endl;
-        //     if (state == FSM::TRAJECTORY_1)
-        //         state = FSM::TRAJECTORY_2;
-        //     else if (state == FSM::TRAJECTORY_2)
-        //         state = FSM::TRAJECTORY_1;
-        // }
+        if ((r-rSwitching)*(rPrev-rSwitching) <= 0){
+            std::cout << "Switching now" << std::endl;
+            ROS_WARN("Switching at : %f\n",r);
+            if (state == FSM::TRAJECTORY_1)
+                state = FSM::TRAJECTORY_2;
+            else if (state == FSM::TRAJECTORY_2)
+                state = FSM::TRAJECTORY_1;
+        }
         if (state == FSM::TRAJECTORY_1)
             cmd_vel.angular.z = f1(r);
         else if (state == FSM::TRAJECTORY_2)
@@ -201,11 +237,11 @@ int main(int argc, char** argv){
     ros::init(argc, argv, "random");
     ros::NodeHandle nh;
 
-    if (!nh.getParam("velocity", V) || !nh.getParam("minimum_radius", R_MIN) || !nh.getParam("maximum_radius", R_MAX) || !nh.getParam("refresh_rate", RATE) || !nh.getParam("initial_angle", INITIAL_ANGLE)){
-        ROS_ERROR("\nCan't load params..");
+    if (!nh.getParam("velocity", V) || !nh.getParam("minimum_radius", R_MIN) || !nh.getParam("maximum_radius", R_MAX) || !nh.getParam("refresh_rate", RATE) || !nh.getParam("initial_angle", INITIAL_ANGLE) || !nh.getParam("tolerance", tolerance)){        ROS_ERROR("\nCan't load params..");
         ROS_ERROR("Exiting now\n");
         return EXIT_FAILURE;
     }
+    srand( (unsigned) time(NULL));
     setDerivedParameters();
 
     ros::Publisher pub_cmd_vel_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", RATE);
