@@ -34,10 +34,16 @@ double rPrev;               // Previous value of r
 double rSwitching;          // Switching radius
 FSM state = FSM::ALIGN;     // State the bot currently is in
 
+double g1(double r){
+    return (A1*r*r*r + B1*r*r + C1*r + D1);
+}
 double f1(double r){
     return (3*A1*r + 2*B1 + C1/r);
 }
 
+double g2(double r){
+    return (A2*r*r*r + B2*r*r + C2*r + D2);
+}
 double f2(double r){
     return (3*A2*r + 2*B2 + C2/r);
 }
@@ -48,7 +54,7 @@ void setDerivedParameters(){
     rPrev = R_MIN;
 
     //! -------- SETTING g1(r) --------
-    double n = rand()/RAND_MAX;
+    double n = double(rand()) / double(RAND_MAX);
     if (n < 0.1){
         A1 = 0;
         B1 = 0;
@@ -89,14 +95,16 @@ void setDerivedParameters(){
         C1 = a*r1*r2;
         D1 = b;
     }
+    std::cout << std::endl;
+    ROS_WARN("\tg1(r) = %fr^3 + %fr^2 + %fr + %f", A1, B1, C1, D1);
 
     //! -------- SETTING g2(r) --------
-    n = rand()/RAND_MAX;
+    n = double(rand()) / double(RAND_MAX);
     if (n < 0.1){
         A2 = 0;
         B2 = 0;
         C2 = -(R_MAX+R_MIN)*V/(R_MAX-R_MIN);
-        D2 = -(V-C2) * R_MAX;
+        D2 = - (V + C2) * R_MAX;
     } else if (n < 0.4){
         double r1;
         if (n < 0.25){
@@ -132,8 +140,21 @@ void setDerivedParameters(){
         C2 = -a*r1*r2;
         D2 = -b;
     }
+    ROS_WARN("\tg2(r) = %fr^3 + %fr^2 + %fr + %f\n", A2, B2, C2, D2);
 
-    ROS_WARN("\ng(r) = %fr^3 + %fr^2 + %fr + %f\n", A1, B1, C1, D1);
+    //! Calculating the switching radius via binary search
+    double low = R_MIN;
+    double high = R_MAX;
+    double mid;
+    while (abs(high - low) >= 0.0001){
+        mid = (high + low) / 2;
+        if (g1(mid)-g2(mid) > 0)
+            high = mid;
+        else
+            low = mid;
+    }
+    rSwitching = mid;
+    ROS_WARN("\tSwitching radius: %f\n", rSwitching);
 }
 
 // Stop the movement of the bot
@@ -171,21 +192,21 @@ void odometryCallback(const nav_msgs::OdometryConstPtr& msg){
                 cmd_vel.angular.z = -0.1 - 0.04*angleDiff;
         } else {
             state = FSM::TRAJECTORY_1;
-            std::cout << std::endl << "Alignment Done!" << std::endl;
-            std::cout << "Moving now.." << std::endl << std::endl;
+            std::cout << std::endl;
+            ROS_WARN("\tAlignment Done. Moving Now..");
         }
     } else {
         double x = msg->pose.pose.position.x;
         double y = msg->pose.pose.position.y;
         double r = sqrt(x*x + y*y);
         cmd_vel.linear.x = V;
-        // if ((r-rSwitching)*(rPrev-rSwitching) <= 0){
-        //     std::cout << "Switching now" << std::endl;
-        //     if (state == FSM::TRAJECTORY_1)
-        //         state = FSM::TRAJECTORY_2;
-        //     else if (state == FSM::TRAJECTORY_2)
-        //         state = FSM::TRAJECTORY_1;
-        // }
+        if ((r-rSwitching)*(rPrev-rSwitching) <= 0){
+            ROS_WARN("\tSwitching now at r = %f", r);
+            if (state == FSM::TRAJECTORY_1)
+                state = FSM::TRAJECTORY_2;
+            else if (state == FSM::TRAJECTORY_2)
+                state = FSM::TRAJECTORY_1;
+        }
         if (state == FSM::TRAJECTORY_1)
             cmd_vel.angular.z = f1(r);
         else if (state == FSM::TRAJECTORY_2)
