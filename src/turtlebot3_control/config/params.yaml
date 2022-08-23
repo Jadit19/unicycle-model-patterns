@@ -1,5 +1,5 @@
 
-velocity: 0.3
+velocity: 0.1
 minimum_radius: 2
 maximum_radius: 4
 refresh_rate: 30
