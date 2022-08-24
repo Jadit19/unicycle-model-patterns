@@ -9,8 +9,9 @@
 double V;               // Velocity of the bot
 double R_MIN;           // Minimum radius of the annular region
 double R_MAX;           // Maximum radius of the annular region
-double INITIAL_ANGLE;   // Initial angle of the bot w.r.t. X-Axis
 int RATE;               // Rate at which the state of the bot will be updated
+double INITIAL_ANGLE;   // Initial angle of the bot w.r.t. X-Axis
+int N;                  // Switching happens every n-th time the bot crosses the switching radius
 double TOLERANCE;       // Tolerance limit for binary search in switching implementatioin
 
 //! -------- DERIVED PARAMETERS --------
@@ -33,6 +34,7 @@ double yaw;                 // Yaw angle of the bot
 double angleDiff = 0;       // Angular difference for initial alignment
 double rPrev;               // Previous value of r
 double rSwitching;          // Switching radius
+int count = 0;              // No. of times the bot has crossed the switching radius
 FSM state = FSM::ALIGN;     // State the bot currently is in
 
 double g1(double r){
@@ -207,11 +209,14 @@ void odometryCallback(const nav_msgs::OdometryConstPtr& msg){
         double r = sqrt(x*x + y*y);
         cmd_vel.linear.x = V;
         if ((r-rSwitching)*(rPrev-rSwitching) <= 0){
-            ROS_WARN("\tSwitching now at r = %f", r);
-            if (state == FSM::TRAJECTORY_1)
-                state = FSM::TRAJECTORY_2;
-            else if (state == FSM::TRAJECTORY_2)
-                state = FSM::TRAJECTORY_1;
+            count += 1;
+            if ((count % N) == 0){
+                ROS_WARN("\tSwitching now at r = %f", r);
+                if (state == FSM::TRAJECTORY_1)
+                    state = FSM::TRAJECTORY_2;
+                else if (state == FSM::TRAJECTORY_2)
+                    state = FSM::TRAJECTORY_1;
+            }
         }
         if (state == FSM::TRAJECTORY_1)
             cmd_vel.angular.z = f1(r);
@@ -228,7 +233,7 @@ int main(int argc, char** argv){
     ros::init(argc, argv, "switching");
     ros::NodeHandle nh;
 
-    if (!nh.getParam("velocity", V) || !nh.getParam("minimum_radius", R_MIN) || !nh.getParam("maximum_radius", R_MAX) || !nh.getParam("refresh_rate", RATE) || !nh.getParam("initial_angle", INITIAL_ANGLE) || !nh.getParam("tolerance", TOLERANCE)){
+    if (!nh.getParam("velocity", V) || !nh.getParam("minimum_radius", R_MIN) || !nh.getParam("maximum_radius", R_MAX) || !nh.getParam("refresh_rate", RATE) || !nh.getParam("initial_angle", INITIAL_ANGLE) || !nh.getParam("tolerance", TOLERANCE) || !nh.getParam("n", N)){
         ROS_ERROR("\nCan't load params..");
         ROS_ERROR("Exiting now\n");
         return EXIT_FAILURE;
