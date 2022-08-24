@@ -3,7 +3,9 @@
 #include <ros/ros.h>
 #include <tf/tf.h>
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/PoseStamped.h>
 
 //! -------- CHANGEABLE PARAMETERS --------
 double V;               // Velocity of the bot
@@ -26,7 +28,9 @@ enum FSM {              // Finite state machine declaration as enumeration
 };
 
 //! -------- GLOBAL PARAMETERS --------
-geometry_msgs::Twist cmd_vel = geometry_msgs::Twist();  // Command velocity that is published to the TurtleBot
+geometry_msgs::Twist cmd_vel = geometry_msgs::Twist();          // Command velocity that is published to the TurtleBot
+nav_msgs::Path path = nav_msgs::Path();                         // Path that the turtlebot follows, used in RViz
+geometry_msgs::PoseStamped pose = geometry_msgs::PoseStamped(); // Pose of the bot, used in RViz
 tf::Quaternion q;           // Quaternion responsible for converting orientation of the bot into RPY
 double roll;                // Roll angle of the bot
 double pitch;               // Pitch angle of the bot
@@ -226,6 +230,11 @@ void odometryCallback(const nav_msgs::OdometryConstPtr& msg){
         rPrev = r;
     }
 
+    path.header = msg->header;
+    pose.header = msg->header;
+    pose.pose = msg->pose.pose;
+    path.poses.push_back(pose);
+
     return;
 }
 
@@ -241,12 +250,14 @@ int main(int argc, char** argv){
     setDerivedParameters();
 
     ros::Publisher pub_cmd_vel_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", RATE);
+    ros::Publisher pub_path_ = nh.advertise<nav_msgs::Path>("path", RATE);
     ros::Subscriber sub_odom_ = nh.subscribe<nav_msgs::Odometry>("odom", RATE, odometryCallback);
     ros::Rate loopRate(RATE);
 
     while (ros::ok()){
         ros::spinOnce();
         pub_cmd_vel_.publish(cmd_vel);
+        pub_path_.publish(path);
         loopRate.sleep();
     }
     
