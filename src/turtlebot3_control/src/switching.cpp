@@ -22,6 +22,7 @@ double A2, B2, C2, D2;      // Coefficients of the generating function, g2(r)
 
 //! -------- FINITE STATE MACHINE --------
 enum FSM {              // Finite state machine declaration as enumeration
+    MOVE,               // Move the bot to the required location
     ALIGN,              // Responsible for the bot's initial alignment angle
     TRAJECTORY_1,       // Move according to trajectory 1
     TRAJECTORY_2        // Move according to trajectory 2
@@ -39,7 +40,7 @@ double angleDiff = 0;       // Angular difference for initial alignment
 double rPrev;               // Previous value of r
 double rSwitching;          // Switching radius
 int count = 0;              // No. of times the bot has crossed the switching radius
-FSM state = FSM::ALIGN;     // State the bot currently is in
+FSM state = FSM::MOVE;      // State the bot currently is in
 
 double g1(double r){
     return (A1*r*r*r + B1*r*r + C1*r + D1);
@@ -194,7 +195,14 @@ void updateRPY(const geometry_msgs::Quaternion& orientation){
 void odometryCallback(const nav_msgs::OdometryConstPtr& msg){
     stopMoving();
 
-    if (state == FSM::ALIGN){
+    if (state == FSM::MOVE){
+        cmd_vel.linear.x = 0.08;
+        if (abs(msg->pose.pose.position.x - R_MIN) < TOLERANCE){
+            std::cout << std::endl;
+            ROS_WARN("\tMovement Done. Aligning Now..");
+            state = FSM::ALIGN;
+        }
+    } else if (state == FSM::ALIGN){
         updateRPY(msg->pose.pose.orientation);
         angleDiff = abs(INITIAL_ANGLE - yaw);
         if (angleDiff > 0.003){
@@ -204,8 +212,7 @@ void odometryCallback(const nav_msgs::OdometryConstPtr& msg){
                 cmd_vel.angular.z = -0.1 - 0.04*angleDiff;
         } else {
             state = FSM::TRAJECTORY_1;
-            std::cout << std::endl;
-            ROS_WARN("\tAlignment Done. Moving Now..");
+            ROS_WARN("\tAlignment Done. Generating Trajectory Now..");
         }
     } else {
         double x = msg->pose.pose.position.x;
