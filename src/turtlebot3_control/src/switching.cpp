@@ -33,6 +33,7 @@ geometry_msgs::Twist cmd_vel = geometry_msgs::Twist();          // Command veloc
 nav_msgs::Path path = nav_msgs::Path();                         // Path that the turtlebot follows, used in RViz
 geometry_msgs::PoseStamped pose = geometry_msgs::PoseStamped(); // Pose of the bot, used in RViz
 tf::Quaternion q;           // Quaternion responsible for converting orientation of the bot into RPY
+bool availableToSwitch = 1; // Determines is the bot is ready to switch
 double roll;                // Roll angle of the bot
 double pitch;               // Pitch angle of the bot
 double yaw;                 // Yaw angle of the bot
@@ -58,11 +59,12 @@ double f2(double r){
 
 // Generating random numbers between 0 and 1
 double genRand(){
-    return double(rand()) / double(RAND_MAX);
+    return (double(rand()) / double(RAND_MAX));
 }
 
 // Setting the derived parameters
 void setDerivedParameters(){
+    srand((unsigned int) time(NULL));
     INITIAL_ANGLE *= M_PI / 180;
     rPrev = R_MIN;
 
@@ -112,7 +114,7 @@ void setDerivedParameters(){
     ROS_WARN("\tg1(r) = %fr^3 + %fr^2 + %fr + %f", A1, B1, C1, D1);
 
     // -------- SETTING g2(r) --------
-    n = double(rand()) / double(RAND_MAX);
+    n = genRand();
     if (n < 0.1){
         A2 = 0;
         B2 = 0;
@@ -219,21 +221,26 @@ void odometryCallback(const nav_msgs::OdometryConstPtr& msg){
         double y = msg->pose.pose.position.y;
         double r = sqrt(x*x + y*y);
         cmd_vel.linear.x = V;
-        if ((r-rSwitching)*(rPrev-rSwitching) <= 0){
-            count += 1;
-            if ((count % N) == 0){
-                ROS_WARN("\tSwitching now at r = %f", r);
-                if (state == FSM::TRAJECTORY_1)
-                    state = FSM::TRAJECTORY_2;
-                else if (state == FSM::TRAJECTORY_2)
-                    state = FSM::TRAJECTORY_1;
+        if (availableToSwitch){
+            if ((r-rSwitching)*(rPrev-rSwitching) <= 0){
+                count += 1;
+                if ((count % N) == 0){
+                    ROS_WARN("\tSwitching now at r = %f", r);
+                    if (state == FSM::TRAJECTORY_1)
+                        state = FSM::TRAJECTORY_2;
+                    else if (state == FSM::TRAJECTORY_2)
+                        state = FSM::TRAJECTORY_1;
+                    availableToSwitch = 0;
+                }
             }
+        } else {
+            if ((r>rSwitching+0.2) || (r<rSwitching-0.2))
+                availableToSwitch = 1;
         }
         if (state == FSM::TRAJECTORY_1)
             cmd_vel.angular.z = f1(r);
         else if (state == FSM::TRAJECTORY_2)
             cmd_vel.angular.z = f2(r);
-
         rPrev = r;
     }
 
