@@ -1,5 +1,5 @@
 <launch>
-    <arg name="model" default="burger"/>
+    <arg name="model" default="burger" />
     <arg name="x_pos" default="0.0"/>
     <arg name="y_pos" default="0.0"/>
     <arg name="rviz" default="false" />
@@ -10,9 +10,7 @@
         <arg name="y_pos" default="$(arg y_pos)"/>
     </include>
 
-    <rosparam file="$(find turtlebot3_control)/config/params.yaml" />
-    <node pkg="turtlebot3_control" name="switching" type="switching" output="screen"/>
-
+    <node pkg="turtlebot3_control" name="target" type="target" output="screen" />
     <group if="$(arg rviz)">
         <node pkg="rviz" name="rviz" type="rviz" args="-d $(find turtlebot3_control)/rviz/path.rviz" />
     </group>

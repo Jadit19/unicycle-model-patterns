@@ -210,6 +210,10 @@ include_directories(
 # target_link_libraries(annular ${catkin_LIBRARIES})
 # add_dependencies(annular ${catkin_EXPORTED_TARGETS})
 
-add_executable(switching src/switching.cpp)
-target_link_libraries(switching ${catkin_LIBRARIES})
-add_dependencies(switching ${catkin_EXPORTED_TARGETS})
+add_executable(pattern src/pattern.cpp)
+target_link_libraries(pattern ${catkin_LIBRARIES})
+add_dependencies(pattern ${catkin_EXPORTED_TARGETS})
+
+add_executable(target src/target.cpp)
+target_link_libraries(target ${catkin_LIBRARIES})
+add_dependencies(target ${catkin_EXPORTED_TARGETS})
