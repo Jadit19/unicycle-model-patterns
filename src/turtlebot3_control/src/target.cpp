@@ -114,7 +114,7 @@ int main(int argc, char** argv){
     targets.push_back(std::make_pair(1, 0));
     targets.push_back(std::make_pair(0, -1));
     targets.push_back(std::make_pair(-1, 0));
-    targets.push_back(std::make_pair(1, 0));
+    targets.push_back(std::make_pair(0, 1));
 
     while (ros::ok()){
         ros::spinOnce();
