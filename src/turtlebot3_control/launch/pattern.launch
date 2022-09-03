@@ -1,0 +1,19 @@
+<launch>
+    <arg name="model" default="burger"/>
+    <arg name="x_pos" default="0.0"/>
+    <arg name="y_pos" default="0.0"/>
+    <arg name="rviz" default="false" />
+
+    <include file="$(find turtlebot3_gazebo)/launch/turtlebot3_empty_world.launch">
+        <arg name="model" default="$(arg model)"/>
+        <arg name="x_pos" default="$(arg x_pos)"/>
+        <arg name="y_pos" default="$(arg y_pos)"/>
+    </include>
+
+    <rosparam file="$(find turtlebot3_control)/config/params.yaml" />
+    <node pkg="turtlebot3_control" name="pattern" type="pattern" output="screen"/>
+
+    <group if="$(arg rviz)">
+        <node pkg="rviz" name="rviz" type="rviz" args="-d $(find turtlebot3_control)/rviz/path.rviz" />
+    </group>
+</launch>
