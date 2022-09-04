@@ -1,4 +1,4 @@
-# SURGE
+# Patterns in a Unicycle Model
 
 ## Software requirements
 The program was tried and tested on a system with the following specifications:
@@ -37,5 +37,16 @@ source ~/.bashrc
 cd ..
 catkin_make
 source ./devel/setup.bash
-roslaunch turtlebot3_gazebo turtlebot3_world.launch
 ```
+
+- For switching between patterns:
+```sh
+roslaunch turtlebot3_control pattern.launch
+```
+
+- For switching between targets:
+```sh
+roslaunch turtlebot3_control target.launch
+```
+
+There's also an option for `rviz:=true` in the launching commang for trajectory visualization.
