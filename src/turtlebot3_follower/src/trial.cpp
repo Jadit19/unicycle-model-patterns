@@ -22,8 +22,8 @@ int main(int argc, char** argv){
         while (getline(file, line)){
             std::stringstream ss(line);
             ss >> x >> y;
-            fileWaypoint.x = std::stoi(x);
-            fileWaypoint.y = std::stoi(y);
+            fileWaypoint.x = std::stod(x);
+            fileWaypoint.y = std::stod(y);
             waypoints.push_back(fileWaypoint);
         }
         ROS_WARN("No. of waypoints read = %lu", waypoints.size());
