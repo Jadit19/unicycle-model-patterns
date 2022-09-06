@@ -27,7 +27,7 @@ geometry_msgs::Twist cmd_vel = geometry_msgs::Twist();
 geometry_msgs::PoseStamped pose = geometry_msgs::PoseStamped();
 geometry_msgs::Point fileWaypoint = geometry_msgs::Point();
 
-FSM state = FSM::ALIGN;
+FSM state = FSM::MOVE;
 
 void addToPath(const nav_msgs::OdometryConstPtr& msg){
     path.header = msg->header;
