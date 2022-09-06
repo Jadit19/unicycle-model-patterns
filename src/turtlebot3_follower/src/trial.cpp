@@ -126,7 +126,7 @@ int main(int argc, char** argv){
     fileWaypoint.z = 0;
     std::fstream file;
     std::string line;
-    file.open("/home/adit/unicycle-model-patterns/src/turtlebot3_follower/path/waypoints.txt", std::ios::in);
+    file.open("/home/adit/unicycle-model-patterns/src/turtlebot3_follower/path/waypoints2.txt", std::ios::in);
     if (file.is_open()){
         std::string x, y;
         while (getline(file, line)){
