@@ -217,7 +217,3 @@ add_dependencies(pattern ${catkin_EXPORTED_TARGETS})
 add_executable(target src/target.cpp)
 target_link_libraries(target ${catkin_LIBRARIES})
 add_dependencies(target ${catkin_EXPORTED_TARGETS})
-
-add_executable(controller src/controller.cpp)
-target_link_libraries(controller ${catkin_LIBRARIES})
-add_dependencies(controller ${catkin_EXPORTED_TARGETS})

@@ -1,13 +1,11 @@
-#include<ros/ros.h>
-#include<tf/tf.h>
-#include<iostream>
-#include<fstream>
-#include<cmath>
-#include<geometry_msgs/Twist.h>
-#include<geometry_msgs/PointStamped.h>
-#include<geometry_msgs/Point.h>
-#include<nav_msgs/Odometry.h>
-#include<nav_msgs/Path.h>
+#include <iostream>
+#include <fstream>
+#include <tf/tf.h>
+#include <ros/ros.h>
+#include <nav_msgs/Path.h>
+#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Point.h>
+#include <geometry_msgs/Twist.h>
 
 enum FSM {
     MOVE,
@@ -24,14 +22,14 @@ double roll, pitch, yaw;
 
 tf::Quaternion q;
 nav_msgs::Path path = nav_msgs::Path();
-geometry_msgs::Twist cmd_vel = geometry_msgs::Twist();
 std::vector<geometry_msgs::Point> waypoints;
-geometry_msgs::Point fileWaypoint = geometry_msgs::Point();
+geometry_msgs::Twist cmd_vel = geometry_msgs::Twist();
 geometry_msgs::PoseStamped pose = geometry_msgs::PoseStamped();
+geometry_msgs::Point fileWaypoint = geometry_msgs::Point();
 
 FSM state = FSM::MOVE;
 
-void addtoPath(const nav_msgs::OdometryConstPtr& msg){
+void addToPath(const nav_msgs::OdometryConstPtr& msg){
     path.header = msg->header;
     pose.header = msg->header;
     pose.pose = msg->pose.pose;
@@ -42,8 +40,6 @@ void addtoPath(const nav_msgs::OdometryConstPtr& msg){
 void stopMoving(){
     cmd_vel.linear.x = 0;
     cmd_vel.angular.y = 0;
-    cmd_vel.angular.x = 0;
-    cmd_vel.linear.z = 0;
     return;
 }
 
@@ -56,7 +52,6 @@ void updateRPY(const geometry_msgs::Quaternion& orientation){
     m.getRPY(roll, pitch, yaw);
     return;
 }
-
 
 int getDirection(double theta){
     if (abs(theta-yaw)<0.1 || abs(M_PI*2+theta-yaw)<0.1 || abs(M_PI*2-theta+yaw)<0.1)
@@ -75,21 +70,22 @@ int getDirection(double theta){
     }
 }
 
-void OdomCallBack(const nav_msgs::OdometryConstPtr &msg){
+void odomCallback(const nav_msgs::OdometryConstPtr& msg){
     stopMoving();
-    addtoPath(msg);
+    addToPath(msg);
     updateRPY(msg->pose.pose.orientation);
     double x = msg->pose.pose.position.x;
     double y = msg->pose.pose.position.y;
 
-    if(state == FSM::MOVE){
+    if (state == FSM::MOVE){
         cmd_vel.linear.x = 0.05;
-        if(abs(x - waypoints[0].x) < TOLERANCE){
+        if (abs(waypoints[0].x-x) < TOLERANCE){
             state = FSM::ALIGN;
-            ROS_WARN("\tMovement Done!!...Aligning now");
+            ROS_WARN("\tMovement done. Aligning now...");
         }
         return;
     }
+
     if (state == FSM::ALIGN){
         double angleDiff = INITIAL_ANGLE - yaw;
         if (abs(angleDiff) > 0.003){
@@ -99,64 +95,65 @@ void OdomCallBack(const nav_msgs::OdometryConstPtr &msg){
                 cmd_vel.angular.z = -0.1 + 0.04*angleDiff;
         } else {
             state = FSM::TRAJECTORY;
-            ROS_WARN("\tAlignment done!!..Generating trajectory now");
+            ROS_WARN("\tAlignment done. Generating trajectory now..");
         }
         return;
     }
-    if(state == FSM::TRAJECTORY){
-        if(current == waypoints.size()){
+
+    if (state == FSM::TRAJECTORY){
+        if (current == waypoints.size()){
             return;
         }
-        double nextX = waypoints[current].x;
-        double nextY = waypoints[current].y;
-        double dist = sqrt(pow(nextX - x,2) + pow(nextY - y,2));
-        if(dist < 0.02){
-            ROS_INFO("reaching waypoint number %d within a distance of %f", current, dist);
+        double finalX = waypoints[current].x;
+        double finalY = waypoints[current].y;
+        double dist = sqrt(pow(finalX-x,2) + pow(finalY-y,2));
+        if (dist < 0.02){
+            ROS_INFO("\tReached waypoint #%d with a distance of %f", current, dist);
             current++;
             return;
         }
-        double theta = atan2(nextY - y, nextX - x);
+        double theta = atan2(finalY-y, finalX-x);
         cmd_vel.angular.z = getDirection(theta) * 0.7;
-        // cmd_vel.angular.z = pid(kp, ki, kd, dt, theta, yaw);
         cmd_vel.linear.x = 0.1;
         return;
     }
 }
 
 int main(int argc, char** argv){
-
     ros::init(argc, argv, "follower");
     ros::NodeHandle nh;
-    ros::Publisher pub_cmd_vel = nh.advertise<geometry_msgs::Twist>("cmd_vel", RATE);
-    ros::Publisher path_pub = nh.advertise<nav_msgs::Path>("path", RATE);
-    ros::Subscriber odom_sub = nh.subscribe<nav_msgs::Odometry>("odom", RATE, OdomCallBack);
-    ros::Rate loopRate(RATE);
 
     fileWaypoint.z = 0;
     std::fstream file;
     std::string line;
-    file.open("/home/rajarshi/Desktop/unicycle-model-patterns/src/turtlebot3_follower/path/waypoints_12_targets.txt", std::ios::in);
+    file.open("/home/adit/unicycle-model-patterns/src/turtlebot3_follower/path/waypoints_12_targets.txt", std::ios::in);
     if (file.is_open()){
-        std:: string x; std::string y;
-        while(getline(file, line)){
+        std::string x, y;
+        while (getline(file, line)){
             std::stringstream ss(line);
             ss >> x >> y;
             fileWaypoint.x = std::stod(x);
             fileWaypoint.y = std::stod(y);
             waypoints.push_back(fileWaypoint);
         }
-        ROS_WARN("Number of waypoints read = %lu", waypoints.size());
-        ROS_WARN("Target Point := (%f, %f)", waypoints[0].x, waypoints[0].y);
-    }else{
-        ROS_ERROR("Cannot open waypoints file\n");
+        ROS_WARN("No. of waypoints read = %lu", waypoints.size());
+        file.close();
+    } else {
+        ROS_ERROR("Couldn't open file");
         return EXIT_FAILURE;
     }
-    while(ros::ok){
+
+    ros::Publisher pub_cmd_vel_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", RATE);
+    ros::Publisher pub_path_ = nh.advertise<nav_msgs::Path>("path", RATE);
+    ros::Subscriber sub_odom_ = nh.subscribe<nav_msgs::Odometry>("odom", RATE, odomCallback);
+    ros::Rate loopRate(RATE);
+
+    while (ros::ok()){
         ros::spinOnce();
-        pub_cmd_vel.publish(cmd_vel);
-        path_pub.publish(path);
+        pub_cmd_vel_.publish(cmd_vel);
+        pub_path_.publish(path);
         loopRate.sleep();
-    } 
+    }
 
     return EXIT_SUCCESS;
 }
