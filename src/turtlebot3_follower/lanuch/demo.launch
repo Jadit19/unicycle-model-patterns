@@ -2,6 +2,7 @@
     <arg name="model" default="burger" />
     <arg name="x_pos" default="0.0" />
     <arg name="y_pos" default="0.0" />
+    <arg name="rviz" default="false" />
 
     <include file="$(find turtlebot3_gazebo)/launch/turtlebot3_empty_world.launch">
         <arg name="model" default="$(arg model)"/>
@@ -10,4 +11,7 @@
     </include>
 
     <node pkg="turtlebot3_follower" name="trial" type="trial" output="screen" />
+    <group if="$(arg rviz)">
+        <node pkg="rviz" name="rviz" type="rviz" args="-d $(find turtlebot3_control)/rviz/path.rviz" />
+    </group>
 </launch>
