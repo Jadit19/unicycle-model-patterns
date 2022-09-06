@@ -18,10 +18,6 @@ enum FSM {
 const int RATE = 30;
 const double TOLERANCE = 0.001;
 const double INITIAL_ANGLE = M_PI_2;
-double kp=1.5;
-double ki=2;
-double kd=0.02;
-double dt=0.01;
 
 int current = 1;
 double roll, pitch, yaw;
@@ -33,7 +29,7 @@ std::vector<geometry_msgs::Point> waypoints;
 geometry_msgs::Point fileWaypoint = geometry_msgs::Point();
 geometry_msgs::PoseStamped pose = geometry_msgs::PoseStamped();
 
-FSM state = FSM::ALIGN;
+FSM state = FSM::MOVE;
 
 void addtoPath(const nav_msgs::OdometryConstPtr& msg){
     path.header = msg->header;
@@ -60,24 +56,7 @@ void updateRPY(const geometry_msgs::Quaternion& orientation){
     m.getRPY(roll, pitch, yaw);
     return;
 }
-// double e_prev = 0;
-double e_sum = 0;
-double w;
-double pid(double kp, double ki,double kd, double dt, double theta_ref, double theta_feedback){
 
-    double error = theta_ref - theta_feedback;
-    double e_prev = error;
-    // e = error;
-    
-    while(error > 0.1){
-        double e = error;
-        e_sum = e_sum + e*dt;
-        // double dedt = (e - e_prev) / dt;
-        w = kp*e + ki * e_sum ;
-        e_prev = e;
-    }
-    return w;
-}
 
 int getDirection(double theta){
     if (abs(theta-yaw)<0.1 || abs(M_PI*2+theta-yaw)<0.1 || abs(M_PI*2-theta+yaw)<0.1)
@@ -115,9 +94,9 @@ void OdomCallBack(const nav_msgs::OdometryConstPtr &msg){
         double angleDiff = INITIAL_ANGLE - yaw;
         if (abs(angleDiff) > 0.003){
             if (angleDiff > 0)
-                cmd_vel.angular.z = 0.3 + 0.04*angleDiff;
+                cmd_vel.angular.z = 0.1 + 0.04*angleDiff;
             else
-                cmd_vel.angular.z = -0.3 + 0.04*angleDiff;
+                cmd_vel.angular.z = -0.1 + 0.04*angleDiff;
         } else {
             state = FSM::TRAJECTORY;
             ROS_WARN("\tAlignment done!!..Generating trajectory now");
@@ -137,9 +116,9 @@ void OdomCallBack(const nav_msgs::OdometryConstPtr &msg){
             return;
         }
         double theta = atan2(nextY - y, nextX - x);
-        cmd_vel.angular.z = getDirection(theta) * 0.9;
+        cmd_vel.angular.z = getDirection(theta) * 0.7;
         // cmd_vel.angular.z = pid(kp, ki, kd, dt, theta, yaw);
-        cmd_vel.linear.x = 0.8;
+        cmd_vel.linear.x = 0.1;
         return;
     }
 }
@@ -156,7 +135,7 @@ int main(int argc, char** argv){
     fileWaypoint.z = 0;
     std::fstream file;
     std::string line;
-    file.open("/home/rajarshi/Desktop/unicycle-model-patterns/src/turtlebot3_follower/data/wp1.txt", std::ios::in);
+    file.open("/home/rajarshi/Desktop/unicycle-model-patterns/src/turtlebot3_follower/path/waypoints_12_targets.txt", std::ios::in);
     if (file.is_open()){
         std:: string x; std::string y;
         while(getline(file, line)){

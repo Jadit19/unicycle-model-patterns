@@ -2,48 +2,50 @@
 #include <utility>
 #include <ros/ros.h>
 #include <tf/tf.h>
-#include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
+#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Point.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/Point.h>
 
-enum FSM {
-    MOVE,
-    ALIGN,
-    TRAJECTORY
-};
+//! -------- FINITE STATE MACHINE --------
+enum FSM {                                  // Finite state machine declaration as enumeration
+    MOVE,                                   // Move the bot to the required location
+    ALIGN,                                  // Responsible for the bot's initial alignment angle
+    TRAJECTORY                              // Generating trajectory based on the control law
+}; 
 
-const int RATE = 30;
-const double V = 0.2;
-const double R_MIN = 2.0;
-const double R_MAX = 2.5;
-const double TOLERANCE = 0.001;
-const double INITIAL_ANGLE = -M_PI_2;
-std::vector<geometry_msgs::Point> targets;
+//! -------- CHANGEABLE PARAMETERS --------
+const int RATE = 30;                        // Rate at which the state of the bot will be updated
+const double V = 0.1;                       // Velocity of the bot
+const double R_MIN = 1.0;                   // Minimum radius of the annular region
+const double R_MAX = 1.5;                   // Maximum radius of the annular region
+const double TOLERANCE = 0.001;             // Tolerance limit for multiple purpose
+const double INITIAL_ANGLE = -M_PI_2;       // Initial angle of the bot w.r.t. X-Axis
+std::vector<geometry_msgs::Point> targets;  // Target points about which the bot has to switch
 
-geometry_msgs::Point pt1, pt2, pt3, pt4;
+//! -------- DERIVED PARAMETERS --------
+double M = (R_MAX+R_MIN)*V/(R_MAX-R_MIN);   // y = M*x + C
+double C = (V-M)*R_MAX;                     // y = M*x + C
 
-double M = (R_MAX+R_MIN)*V/(R_MAX-R_MIN);
-double C = (V-M)*R_MAX;
-double r;
-double x, y;
-double roll, pitch, yaw;
+//! -------- GLOBAL PARAMETERS --------
+double r;                                                       // distance of the bot from the closest target
+double x, y;                                                    // Extracting the (x, y) coordinate from the odometry
+double roll, pitch, yaw;                                        // Roll, Pitch and Yaw angle of the bot
+tf::Quaternion q;                                               // Quaternion responsible for converting orientation of the bot to RPY
+nav_msgs::Path path = nav_msgs::Path();                         // Path that is to be published to RVIZ
+geometry_msgs::Twist cmd_vel = geometry_msgs::Twist();          // Command velocity published to the TurtleBot
+geometry_msgs::PoseStamped pose = geometry_msgs::PoseStamped(); // Pose of the bot, used in RVIZ
+FSM state = FSM::MOVE;                                          // State the bot currently is in
 
-tf::Quaternion q;
-nav_msgs::Path path = nav_msgs::Path();
-geometry_msgs::Twist cmd_vel = geometry_msgs::Twist();
-geometry_msgs::PoseStamped pose = geometry_msgs::PoseStamped();
-
-FSM state = FSM::MOVE;
-
+// Stop the movement of the bot
 void stopMoving(){
     cmd_vel.linear.x = 0;
-    cmd_vel.linear.y = 0;
     cmd_vel.angular.z = 0;
     return;
 }
 
+// adding new poses to the path of the bot
 void addToPath(const nav_msgs::OdometryConstPtr& msg){
     path.header = msg->header;
     pose.header = msg->header;
@@ -52,6 +54,7 @@ void addToPath(const nav_msgs::OdometryConstPtr& msg){
     return;
 }
 
+// Calculating the roll, pitch and yaw of the bot
 void updateRPY(const geometry_msgs::Quaternion& orientation){
     q.setW(orientation.w);
     q.setX(orientation.x);
@@ -62,10 +65,12 @@ void updateRPY(const geometry_msgs::Quaternion& orientation){
     return;
 }
 
+// f(r) = (1/r) * (d/dr)g(r)
 double f(double r){
     return (-M/r);
 }
 
+// Odometry call back function to subscriber
 void odomCallback(const nav_msgs::OdometryConstPtr& msg){
     stopMoving();
     addToPath(msg);
@@ -74,9 +79,9 @@ void odomCallback(const nav_msgs::OdometryConstPtr& msg){
 
     if (state == FSM::MOVE){
         cmd_vel.linear.x = 0.05;
-        if (abs(pt1.x+R_MAX-x) < TOLERANCE){
+        if (abs(targets[0].x+R_MAX-x) < TOLERANCE){
             state = FSM::ALIGN;
-            ROS_WARN("\tMovement done. Aligning now");
+            ROS_WARN("\tMovement done. Aligning now..");
         }
         return;
     }
@@ -98,32 +103,53 @@ void odomCallback(const nav_msgs::OdometryConstPtr& msg){
     
     cmd_vel.linear.x = V;
     r = 1e8;
-    for (geometry_msgs::Point pt: targets){
-        r = std::min(r, sqrt(pow(pt.x-x,2) + pow(pt.y-y,2)));
+    for (geometry_msgs::Point target: targets){
+        r = std::min(r, sqrt(pow(target.x-x,2) + pow(target.y-y,2)));
     }
     cmd_vel.angular.z = f(r);
     return;
 }
 
 int main(int argc, char** argv){
-    ros::init(argc, argv, "multi");
+    ros::init(argc, argv, "target");
     ros::NodeHandle nh;
 
     ros::Publisher pub_cmd_vel_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", RATE);
     ros::Publisher pub_path_ = nh.advertise<nav_msgs::Path>("path", RATE);
     ros::Subscriber sub_odom_ = nh.subscribe<nav_msgs::Odometry>("odom", RATE, odomCallback);
     ros::Rate loopRate(RATE);
- 
-    
-    pt1.x = 1; pt1.y = 0;
-    pt2.x = 0; pt2.y = -1;
-    pt3.x = -1; pt3.y = 0;
-    pt4.x = 0; pt4.y = 1;
 
-    targets.push_back(pt1);
-    targets.push_back(pt2);
-    targets.push_back(pt3);
-    targets.push_back(pt4);
+    int noOfTargets, x, y;
+    geometry_msgs::Point p;
+    p.z = 0;
+
+    ROS_WARN("\tEnter the number of targets:");
+    std::cin >> noOfTargets;
+    if (noOfTargets < 2){
+        ROS_ERROR("\tEnter at least 2 targets to switch between.\n");
+        return EXIT_FAILURE;
+    }
+
+    for (int i=1; i<=noOfTargets; i++){
+        std::cout << std::endl;
+        ROS_WARN("\tPosition (x, y) of target #%d:", i);
+        std::cout << "\tEnter x coordinate: ";
+        std::cin >> p.x;
+        std::cout << "\tEnter y coordinate: ";
+        std::cin >> p.y;
+        targets.push_back(p);
+    }
+    std::cout << std::endl;
+    for (int i=0; i<=noOfTargets+1; i++){
+        geometry_msgs::Point c1 = targets[(i)%noOfTargets];
+        geometry_msgs::Point c2 = targets[(i+1)%noOfTargets];
+        double dist = sqrt(pow(c1.x-c2.x,2) + pow(c1.y-c2.y,2));
+        if (dist > (R_MAX+R_MIN)){
+            ROS_ERROR("\tDistance between point %d and %d is %lf > %lf\n", (i%noOfTargets), ((i+1)%noOfTargets), dist, (R_MAX+R_MIN));
+            return EXIT_FAILURE;
+        }
+    }
+    ROS_WARN("\tTargets initialized successfully. Moving now..");
 
     while (ros::ok()){
         ros::spinOnce();
