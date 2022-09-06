@@ -120,13 +120,13 @@ void odomCallback(const nav_msgs::OdometryConstPtr& msg){
 }
 
 int main(int argc, char** argv){
-    ros::init(argc, argv, "trial");
+    ros::init(argc, argv, "follower");
     ros::NodeHandle nh;
 
     fileWaypoint.z = 0;
     std::fstream file;
     std::string line;
-    file.open("/home/adit/unicycle-model-patterns/src/turtlebot3_follower/path/waypoints2.txt", std::ios::in);
+    file.open("/home/adit/unicycle-model-patterns/src/turtlebot3_follower/path/waypoints_12_targets.txt", std::ios::in);
     if (file.is_open()){
         std::string x, y;
         while (getline(file, line)){
@@ -137,7 +137,6 @@ int main(int argc, char** argv){
             waypoints.push_back(fileWaypoint);
         }
         ROS_WARN("No. of waypoints read = %lu", waypoints.size());
-        ROS_WARN("Target Point: (%f, %f)", waypoints[0].x, waypoints[0].y);
         file.close();
     } else {
         ROS_ERROR("Couldn't open file");
