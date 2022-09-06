@@ -3,5 +3,7 @@ minimum_radius: 2
 maximum_radius: 4
 refresh_rate: 30
 initial_angle: -90
+velocity_gain: 1
+alpha_gain: 2
 n: 1
 tolerance: 0.001

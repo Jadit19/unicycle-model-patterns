@@ -6,6 +6,7 @@
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Point.h>
 
 enum FSM {
     MOVE,
@@ -14,12 +15,14 @@ enum FSM {
 };
 
 const int RATE = 30;
-const double V = 0.01;
-const double R_MIN = 1.0;
-const double R_MAX = 1.5;
+const double V = 0.2;
+const double R_MIN = 2.0;
+const double R_MAX = 2.5;
 const double TOLERANCE = 0.001;
 const double INITIAL_ANGLE = -M_PI_2;
-std::vector<std::pair<double, double>> targets;
+std::vector<geometry_msgs::Point> targets;
+
+geometry_msgs::Point pt1, pt2, pt3, pt4;
 
 double M = (R_MAX+R_MIN)*V/(R_MAX-R_MIN);
 double C = (V-M)*R_MAX;
@@ -71,7 +74,7 @@ void odomCallback(const nav_msgs::OdometryConstPtr& msg){
 
     if (state == FSM::MOVE){
         cmd_vel.linear.x = 0.05;
-        if (abs(targets[0].first+R_MAX-x) < TOLERANCE){
+        if (abs(pt1.x+R_MAX-x) < TOLERANCE){
             state = FSM::ALIGN;
             ROS_WARN("\tMovement done. Aligning now");
         }
@@ -95,8 +98,8 @@ void odomCallback(const nav_msgs::OdometryConstPtr& msg){
     
     cmd_vel.linear.x = V;
     r = 1e8;
-    for (std::pair<double, double> target: targets){
-        r = std::min(r, sqrt(pow(target.first-x,2) + pow(target.second-y,2)));
+    for (geometry_msgs::Point pt: targets){
+        r = std::min(r, sqrt(pow(pt.x-x,2) + pow(pt.y-y,2)));
     }
     cmd_vel.angular.z = f(r);
     return;
@@ -110,11 +113,17 @@ int main(int argc, char** argv){
     ros::Publisher pub_path_ = nh.advertise<nav_msgs::Path>("path", RATE);
     ros::Subscriber sub_odom_ = nh.subscribe<nav_msgs::Odometry>("odom", RATE, odomCallback);
     ros::Rate loopRate(RATE);
+ 
+    
+    pt1.x = 1; pt1.y = 0;
+    pt2.x = 0; pt2.y = -1;
+    pt3.x = -1; pt3.y = 0;
+    pt4.x = 0; pt4.y = 1;
 
-    targets.push_back(std::make_pair(1, 0));
-    targets.push_back(std::make_pair(0, -1));
-    targets.push_back(std::make_pair(-1, 0));
-    targets.push_back(std::make_pair(0, 1));
+    targets.push_back(pt1);
+    targets.push_back(pt2);
+    targets.push_back(pt3);
+    targets.push_back(pt4);
 
     while (ros::ok()){
         ros::spinOnce();
