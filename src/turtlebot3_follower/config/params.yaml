@@ -1,0 +1,8 @@
+rate:           30
+tolerance:      0.015
+linear_vel:     0.1
+angular_vel:    0.7
+take_output:    true
+initial_angle:  90
+input_file:     /home/adit/unicycle-model-patterns/src/turtlebot3_follower/path/target/waypoints_12.txt
+output_file:    /home/adit/unicycle-model-patterns/src/turtlebot3_follower/path/target/waypoints_12_sim.txt

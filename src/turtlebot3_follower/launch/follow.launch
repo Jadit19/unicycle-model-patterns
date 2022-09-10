@@ -10,7 +10,9 @@
         <arg name="y_pos" default="$(arg y_pos)"/>
     </include>
 
+    <rosparam file="$(find turtlebot3_follower)/config/params.yaml" />
     <node pkg="turtlebot3_follower" name="follower" type="follower" output="screen" />
+    
     <group if="$(arg rviz)">
         <node pkg="rviz" name="rviz" type="rviz" args="-d $(find turtlebot3_control)/rviz/path.rviz" />
     </group>

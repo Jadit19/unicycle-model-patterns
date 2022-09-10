@@ -13,12 +13,16 @@ enum FSM {
     TRAJECTORY
 };
 
-const int RATE = 30;
-const double TOLERANCE = 0.001;
-const double INITIAL_ANGLE = M_PI_2;
+int RATE;
+bool TAKE_OUTPUT;
+double TOLERANCE;
+double LINEAR_VEL;
+double ANGULAR_VEL;
+double INITIAL_ANGLE;
 
 int current = 1;
 double roll, pitch, yaw;
+std::ofstream outputFile;
 
 tf::Quaternion q;
 nav_msgs::Path path = nav_msgs::Path();
@@ -27,7 +31,7 @@ geometry_msgs::Twist cmd_vel = geometry_msgs::Twist();
 geometry_msgs::PoseStamped pose = geometry_msgs::PoseStamped();
 geometry_msgs::Point fileWaypoint = geometry_msgs::Point();
 
-FSM state = FSM::MOVE;
+FSM state = FSM::ALIGN;
 
 void addToPath(const nav_msgs::OdometryConstPtr& msg){
     path.header = msg->header;
@@ -107,14 +111,16 @@ void odomCallback(const nav_msgs::OdometryConstPtr& msg){
         double finalX = waypoints[current].x;
         double finalY = waypoints[current].y;
         double dist = sqrt(pow(finalX-x,2) + pow(finalY-y,2));
-        if (dist < 0.02){
+        if (dist < TOLERANCE){
             ROS_INFO("\tReached waypoint #%d with a distance of %f", current, dist);
+            if (TAKE_OUTPUT)
+                outputFile << finalX << "," << finalY << "," << x << "," << y << "\n";
             current++;
             return;
         }
         double theta = atan2(finalY-y, finalX-x);
-        cmd_vel.angular.z = getDirection(theta) * 0.7;
-        cmd_vel.linear.x = 0.1;
+        cmd_vel.angular.z = getDirection(theta) * ANGULAR_VEL;
+        cmd_vel.linear.x = LINEAR_VEL;
         return;
     }
 }
@@ -123,13 +129,30 @@ int main(int argc, char** argv){
     ros::init(argc, argv, "follower");
     ros::NodeHandle nh;
 
+    std::string inputFileName;
+    std::string outputFileName;
+
+    if (!nh.getParam("linear_vel", LINEAR_VEL) || !nh.getParam("angular_vel", ANGULAR_VEL) || !nh.getParam("rate", RATE) || !nh.getParam("tolerance", TOLERANCE) || !nh.getParam("take_output", TAKE_OUTPUT) || !nh.getParam("initial_angle", INITIAL_ANGLE) || !nh.getParam("input_file", inputFileName)){
+        ROS_ERROR("Can't load params..");
+        ROS_ERROR("Exiting now\n");
+        return EXIT_FAILURE;
+    }
+    if (TAKE_OUTPUT && !nh.getParam("output_file", outputFileName)){
+        ROS_ERROR("Please specify an output file..");
+        ROS_ERROR("Exiting now");
+        return EXIT_FAILURE;
+    }
+    INITIAL_ANGLE *= M_PI / 180;
+
     fileWaypoint.z = 0;
-    std::fstream file;
+    std::fstream inputFile;
     std::string line;
-    file.open("/home/adit/unicycle-model-patterns/src/turtlebot3_follower/path/waypoints_12_targets.txt", std::ios::in);
-    if (file.is_open()){
+    inputFile.open(inputFileName, std::ios::in);
+    outputFile.open(outputFileName);
+
+    if (inputFile.is_open()){
         std::string x, y;
-        while (getline(file, line)){
+        while (getline(inputFile, line)){
             std::stringstream ss(line);
             ss >> x >> y;
             fileWaypoint.x = std::stod(x);
@@ -137,9 +160,16 @@ int main(int argc, char** argv){
             waypoints.push_back(fileWaypoint);
         }
         ROS_WARN("No. of waypoints read = %lu", waypoints.size());
-        file.close();
+        inputFile.close();
     } else {
-        ROS_ERROR("Couldn't open file");
+        ROS_ERROR("Couldn't open input file");
+        return EXIT_FAILURE;
+    }
+
+    if (outputFile.is_open()){
+        outputFile << "x_matlab,y_matlab,x_gazebo,y_gazebo\n";
+    } else {
+        ROS_ERROR("Couldn't open output file");
         return EXIT_FAILURE;
     }
 
