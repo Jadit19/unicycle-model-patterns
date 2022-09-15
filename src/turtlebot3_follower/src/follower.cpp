@@ -21,6 +21,7 @@ double ANGULAR_VEL;
 double INITIAL_ANGLE;
 
 int current = 1;
+double prevDist = 1e4;
 double roll, pitch, yaw;
 std::ofstream outputFile;
 
@@ -31,7 +32,7 @@ geometry_msgs::Twist cmd_vel = geometry_msgs::Twist();
 geometry_msgs::PoseStamped pose = geometry_msgs::PoseStamped();
 geometry_msgs::Point fileWaypoint = geometry_msgs::Point();
 
-FSM state = FSM::ALIGN;
+FSM state = FSM::MOVE;
 
 void addToPath(const nav_msgs::OdometryConstPtr& msg){
     path.header = msg->header;
@@ -111,16 +112,18 @@ void odomCallback(const nav_msgs::OdometryConstPtr& msg){
         double finalX = waypoints[current].x;
         double finalY = waypoints[current].y;
         double dist = sqrt(pow(finalX-x,2) + pow(finalY-y,2));
-        if (dist < TOLERANCE){
-            ROS_INFO("\tReached waypoint #%d with a distance of %f", current, dist);
+        if (dist >= prevDist){
+            ROS_INFO("\tReached waypoint #%d with a distance of %f", current, prevDist);
             if (TAKE_OUTPUT)
                 outputFile << finalX << "," << finalY << "," << x << "," << y << "\n";
             current++;
+            prevDist = 1e4;
             return;
         }
         double theta = atan2(finalY-y, finalX-x);
         cmd_vel.angular.z = getDirection(theta) * ANGULAR_VEL;
         cmd_vel.linear.x = LINEAR_VEL;
+        prevDist = dist;
         return;
     }
 }
@@ -166,11 +169,13 @@ int main(int argc, char** argv){
         return EXIT_FAILURE;
     }
 
-    if (outputFile.is_open()){
-        outputFile << "x_matlab,y_matlab,x_gazebo,y_gazebo\n";
-    } else {
-        ROS_ERROR("Couldn't open output file");
-        return EXIT_FAILURE;
+    if (TAKE_OUTPUT){
+        if (outputFile.is_open()){
+            outputFile << "x_matlab,y_matlab,x_gazebo,y_gazebo\n";
+        } else {
+            ROS_ERROR("Couldn't open output file");
+            return EXIT_FAILURE;
+        }
     }
 
     ros::Publisher pub_cmd_vel_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", RATE);
